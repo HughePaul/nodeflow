@@ -1,0 +1,38 @@
+{
+  "name": "nodeflow",
+  "version": "1.0.0",
+  "description": "",
+  "author": "Paul Winkler",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run lint && npm run unit && npm run cover && npm run check-coverage",
+    "lint": "eslint .",
+    "unit": "mocha test/. --recursive --require test/helpers",
+    "cover": "istanbul cover _mocha -- -R dot test/. --recursive --require test/helpers",
+    "check-coverage": "istanbul check-coverage --statement 100 --branch 100 --function 100 --line 100",
+    "snyk": "snyk test",
+    "snyk:dev": "snyk test --dev"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HughePaul/nodeflow.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=4"
+  },
+  "bugs": {
+    "url": "https://github.com/HughePaul/nodeflow/issues"
+  },
+  "homepage": "https://github.com/HughePaul/nodeflow",
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "eslint": "^3.13.1",
+    "istanbul": "^0.4.3",
+    "mocha": "^3.1.2",
+    "sinon": "^1.14.1",
+    "sinon-chai": "^2.7.0",
+    "snyk": "^1.24.5"
+  }
+}
