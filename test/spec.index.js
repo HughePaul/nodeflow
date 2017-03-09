@@ -16,14 +16,4 @@ describe('nodeflow index', () => {
         let fn = () => {};
         index(fn)._do.should.equal(fn);
     });
-
-    it('should set the context if supplied', () => {
-        let context = {};
-        index(null, context)._context.should.equal(context);
-    });
-
-    it('should use the running context if a context argument isnt supplied', () => {
-        let context = {};
-        index.call(context)._context.should.equal(context);
-    });
 });

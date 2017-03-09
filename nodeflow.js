@@ -1,23 +1,39 @@
 'use strict';
 
 class NodeFlow {
-    constructor(prev, context) {
-        this._first = this;
-        this._catch = [];
-        this._finally = [];
-        this._context = context || this;
+    constructor(prev) {
         if (prev) {
             this._prev = prev;
             this._first = prev._first;
             this._catch = prev._catch;
             this._finally = prev._finally;
-            this._context = prev._context;
+            this._labels = prev._labels;
+        } else {
+            this._first = this;
+            this._catch = [];
+            this._finally = [];
+            this._labels = [{}];
+        }
+    }
+
+    _mergeArrays(a, b) {
+        let i;
+        for (i of a) {
+            if (b.indexOf(i) === -1) {
+                b.push(i);
+            }
+        }
+        for (i of b) {
+            if (a.indexOf(i) === -1) {
+                a.push(i);
+            }
         }
     }
 
     _setFn(type, fn) {
         if (fn instanceof NodeFlow) {
             this[type] = fn._first;
+            this._mergeArrays(this._labels, fn._labels);
         } else {
             this[type] = new NodeFlow(this).do(fn);
         }
@@ -30,35 +46,35 @@ class NodeFlow {
         return this;
     }
 
-    _doCatch(err) {
-        if (!this._catch.length) throw err;
+    _doCatch(err, context) {
+        if (!this._catch.length && !this._return) throw err;
         this._catch.forEach(fn => {
-            fn.call(this._context, err);
+            fn.call(context, err);
         });
     }
 
-    _doFinally(result) {
+    _doFinally(result, context) {
         this._finally.forEach(fn => {
-            fn.call(this._context, result);
+            fn.call(context, result);
         });
     }
 
-    _run(value) {
+    _run(value, context) {
         if (!this._do) {
-            return this._result(null, value);
+            return this._result(null, value, context);
         }
         let result;
         try {
-            result = this._do.call(this._context, value, this._result.bind(this));
+            result = this._do.call(context, value, this._result.bind(this));
         } catch (e) {
-            return this._result(e);
+            return this._result(e, null, context);
         }
         if (this._do.length < 2) {
-            this._result(null, result);
+            this._result(null, result, context);
         }
     }
 
-    _result(err, result) {
+    _result(err, result, context) {
         let next;
         if (result && this._yes) {
             next = this._yes;
@@ -67,23 +83,44 @@ class NodeFlow {
             next = this._no;
         }
 
-        this._doNext(err, result, next);
+        this._doNext(err, result, next, context);
     }
 
-    _doNext(err, result, next) {
+    _doNext(err, result, next, context) {
         next = next || this._next;
 
-        if (err) {
-            this._doCatch(err);
-        } else if (next) {
-            return next._run(result);
+        if (!err && !next && this._goto) {
+            let labels;
+            for (labels of this._labels) {
+                next = labels[this._goto];
+                if (next) break;
+            }
+            if (!next) err = new Error('Goto not found: ' + this._goto);
         }
 
-        this._doFinally(result);
+        if (err) {
+            this._doCatch(err, context);
+        } else if (next) {
+            return setImmediate(() => next._run(result, context));
+        }
+
+        this._doFinally(result, context);
 
         if (!next && this._return) {
-            this._return._doNext(err, result);
+            this._return._doNext(err, result, context);
         }
+    }
+
+    label(name) {
+        let flow = this._setFn('_next');
+        this._labels[0][name] = flow;
+        return flow;
+    }
+
+    goto(name) {
+        let flow = this._setFn('_next');
+        flow._goto = name;
+        return flow;
     }
 
     do(fn) {
@@ -112,9 +149,13 @@ class NodeFlow {
         return this;
     }
 
-    run(value) {
-        this._first._run(value);
+    run(value, context) {
+        this._first._run(value, context || this._context || this);
         return this;
+    }
+
+    bind(context) {
+        this._context = context;
     }
 }
 
