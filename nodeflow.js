@@ -64,12 +64,17 @@ class NodeFlow {
             return this._result(null, value, context);
         }
         let result;
+        let args = [value];
+        let asynchronous = this._do.length >= 2;
+        if (asynchronous) {
+            args.push((err, result) => this._result(err, result, context));
+        }
         try {
-            result = this._do.call(context, value, this._result.bind(this));
+            result = this._do.apply(context, args);
         } catch (e) {
             return this._result(e, null, context);
         }
-        if (this._do.length < 2) {
+        if (!asynchronous) {
             this._result(null, result, context);
         }
     }
